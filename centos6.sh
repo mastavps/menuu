@@ -15,26 +15,6 @@ fi
 echo $MYIP
 MYIP2="s/xxxxxxxxx/$MYIP/g";
 
-#check jika script sudah pernah diinput
-scriptname='sshvpn';
-mkdir -p /var/lib/setup-log
-echo " " >> /var/lib/setup-log/setup.txt
-scriptchecker=`cat /var/lib/setup-log/setup.txt | grep $scriptname`;
-if [ "$scriptchecker" != "" ]; then
-		clear
-		echo -e " ";
-		echo -e "Error! Anda sudah pernah memasukkan script ini sebelumnya";
-		echo -e "Script ini hanya boleh dimasukkan 1x saja!";
-		echo -e "---";
-		echo -e "Jika Anda sebelumnya gagal dalam instalasi, Mohon untuk reinstall OS VPS Anda lebih dulu!";
-		echo -e "Anda dapat mereinstall OS VPS Anda melalui VPS Control Panel";
-		echo -e "Cara Mengakses VPS Control Panel: bit.ly/caraaksesvpspanel";
-		echo -e " ";
-        exit 0;
-	else
-		echo "";
-fi
-echo "$scriptname" >> /var/lib/setup-log/setup.txt
 
 # go to root
 cd
@@ -61,28 +41,20 @@ sed -i '$ i\echo "nameserver 8.8.4.4" >> /etc/resolv.conf' /etc/rc.d/rc.local
 # install wget and curl
 yum -y install wget curl
 
-# setting repo
-wget http://dl.fedoraproject.org/pub/epel/6/i386/epel-release-6-8.noarch.rpm
-wget http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+# Mirror Repo
+wget http://script.hostingtermurah.net/repo/autoscript/centos6/epel-release-6-8.noarch.rpm
+wget http://script.hostingtermurah.net/repo/autoscript/centos6/remi-release-6.rpm
 rpm -Uvh epel-release-6-8.noarch.rpm
 rpm -Uvh remi-release-6.rpm
+if [ "$OS" == "x86_64" ]; then
+wget http://script.hostingtermurah.net/repo/autoscript/centos6/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
+rpm -Uvh rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
+# else
+wget http://script.hostingtermurah.net/repo/autoscript/centos6/rpmforge-release-0.5.3-1.el6.rf.i686.rpm
+rpm -Uvh rpmforge-release-0.5.3-1.el6.rf.i686.rpm
+fi
 sed -i -e "/^\[remi\]/,/^\[.*\]/ s|^\(enabled[ \t]*=[ \t]*0\\)|enabled=1|" /etc/yum.repos.d/remi.repo
 rm -f *.rpm
-
-# --------- Mirror Repo --------------
-# wget http://script.hostingtermurah.net/repo/autoscript/centos6/epel-release-6-8.noarch.rpm
-# wget http://script.hostingtermurah.net/repo/autoscript/centos6/remi-release-6.rpm
-# rpm -Uvh epel-release-6-8.noarch.rpm
-# rpm -Uvh remi-release-6.rpm
-# if [ "$OS" == "x86_64" ]; then
-  # wget http://script.hostingtermurah.net/repo/autoscript/centos6/rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
-  # rpm -Uvh rpmforge-release-0.5.3-1.el6.rf.x86_64.rpm
-# else
-  # wget http://script.hostingtermurah.net/repo/autoscript/centos6/rpmforge-release-0.5.3-1.el6.rf.i686.rpm
-  # rpm -Uvh rpmforge-release-0.5.3-1.el6.rf.i686.rpm
-# fi
-# sed -i -e "/^\[remi\]/,/^\[.*\]/ s|^\(enabled[ \t]*=[ \t]*0\\)|enabled=1|" /etc/yum.repos.d/remi.repo
-# rm -f *.rpm
 
 # remove unused
 yum -y remove sendmail;
@@ -125,85 +97,16 @@ chmod +x /usr/bin/screenfetch
 echo "clear" >> .bash_profile
 echo "screenfetch" >> .bash_profile
 
-
-# install webserver
-cd
-cat > /etc/nginx/nginx.conf <<END3
-user www-data;
-
-worker_processes 1;
-pid /var/run/nginx.pid;
-
-events {
-	multi_accept on;
-  worker_connections 1024;
-}
-
-http {
-	gzip on;
-	gzip_vary on;
-	gzip_comp_level 5;
-	gzip_types    text/plain application/x-javascript text/xml text/css;
-
-	autoindex on;
-  sendfile on;
-  tcp_nopush on;
-  tcp_nodelay on;
-  keepalive_timeout 65;
-  types_hash_max_size 2048;
-  server_tokens off;
-  include /etc/nginx/mime.types;
-  default_type application/octet-stream;
-  access_log /var/log/nginx/access.log;
-  error_log /var/log/nginx/error.log;
-  client_max_body_size 32M;
-	client_header_buffer_size 8m;
-	large_client_header_buffers 8 8m;
-
-	fastcgi_buffer_size 8m;
-	fastcgi_buffers 8 8m;
-
-	fastcgi_read_timeout 600;
-
-  include /etc/nginx/conf.d/*.conf;
-}
-END3
-sed -i 's/www-data/nginx/g' /etc/nginx/nginx.conf
+# nginx
+apt-get -y install nginx php5-fpm php5-cli libexpat1-dev libxml-parser-perl
+rm /etc/nginx/sites-enabled/default
+rm /etc/nginx/sites-available/default
+wget -O /etc/nginx/nginx.conf "http://files.rzvpn.net/rz/nginx.conf"
 mkdir -p /home/vps/public_html
-wget -O /home/vps/public_html/index.html "http://script.hostingtermurah.net/repo/index.html"
+echo "<pre>Setup by meow | telegram @nswircz | whatsapp +60176218006</pre>" > /home/vps/public_html/index.php
 echo "<?php phpinfo(); ?>" > /home/vps/public_html/info.php
-rm /etc/nginx/conf.d/*
-args='$args'
-uri='$uri'
-document_root='$document_root'
-fastcgi_script_name='$fastcgi_script_name'
-cat > /etc/nginx/conf.d/vps.conf <<END4
-server {
-  listen       85;
-  server_name  127.0.0.1 localhost;
-  access_log /var/log/nginx/vps-access.log;
-  error_log /var/log/nginx/vps-error.log error;
-  root   /home/vps/public_html;
-
-  location / {
-    index  index.html index.htm index.php;
-    try_files $uri $uri/ /index.php?$args;
-  }
-
-  location ~ \.php$ {
-    include /etc/nginx/fastcgi_params;
-    fastcgi_pass  127.0.0.1:9000;
-    fastcgi_index index.php;
-    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-  }
-}
-
-END4
-sed -i 's/apache/nginx/g' /etc/php-fpm.d/www.conf
-chmod -R +rx /home/vps
-service php-fpm restart
-service nginx restart
-
+wget -O /etc/nginx/conf.d/vps.conf "http://files.rzvpn.net/rz/vps.conf"
+sed -i 's/listen = \/var\/run\/php5-fpm.sock/listen = 127.0.0.1:9000/g' /etc/php5/fpm/pool.d/www.conf
 
 #install PPTP
 cd
